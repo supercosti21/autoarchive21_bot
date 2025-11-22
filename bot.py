@@ -3,7 +3,6 @@ import os
 import mimetypes
 import json
 from pathlib import Path
-import magic
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -34,7 +33,10 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 GOOGLE_DRIVE_PARENT_FOLDER_ID = os.getenv('GOOGLE_DRIVE_PARENT_FOLDER_ID')
 GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')
 GOOGLE_TOKEN_JSON = os.getenv('GOOGLE_TOKEN_JSON')
-AUTHORIZED_USER_ID = os.getenv('TELEGRAM_ID')
+
+# --- 🔒 USER ACCESS CONTROL - SOSTITUISCI CON IL TUO VERO USER ID ---
+AUTHORIZED_USER_ID = 123456789  # ⬅️ CAMBIA QUESTO CON IL TUO ID TELEGRAM!
+# Per trovare il tuo ID: scrivi a @userinfobot o @getidsbot su Telegram
 
 # Define conversation states
 GET_PATH, CONFIRM_UPLOAD, SELECT_FOLDER, WAITING_FOR_MORE_FILES, CONFIRM_DELETE, LIST_FILES, SEARCH_FILES = range(7)
@@ -118,7 +120,8 @@ def find_or_create_nested_folder(service, path_string: str, root_folder_id: str)
 def upload_file_to_drive(service, file_path, folder_id):
     try:
         file_name = os.path.basename(file_path)
-        mime_type = magic.from_file(file_path, mime=True) or mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        # Usa solo mimetypes per rilevare il tipo di file
+        mime_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
 
         file_metadata = {'name': file_name, 'parents': [folder_id]}
         media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
