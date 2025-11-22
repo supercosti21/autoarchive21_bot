@@ -1,0 +1,12 @@
+# Sensitive files
+config.ini
+credentials.json
+token.json
+
+# Environment
+venv/
+
+# Temporary files
+temp_downloads/
+*.pyc
+__pycache__/
