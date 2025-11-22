@@ -33,7 +33,11 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 GOOGLE_DRIVE_PARENT_FOLDER_ID = os.getenv('GOOGLE_DRIVE_PARENT_FOLDER_ID')
 GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')
 GOOGLE_TOKEN_JSON = os.getenv('GOOGLE_TOKEN_JSON')
-AUTHORIZED_USER_ID = os.getenv('TELEGRAM_ID')
+
+# --- 🔒 USER ACCESS CONTROL ---
+# Carica l'ID utente autorizzato dalla variabile d'ambiente o usa un valore di default
+AUTHORIZED_USER_ID = int(os.getenv('TELEGRAM_ID', '123456789'))
+# Per trovare il tuo ID: scrivi a @userinfobot o @getidsbot su Telegram
 
 # Define conversation states
 GET_PATH, CONFIRM_UPLOAD, SELECT_FOLDER, WAITING_FOR_MORE_FILES, CONFIRM_DELETE, LIST_FILES, SEARCH_FILES = range(7)
@@ -49,8 +53,11 @@ def get_drive_service():
 
     creds = None
     token_path = 'token.json'
-
-    if GOOGLE_TOKEN_JSON:
+    
+    # Forza la riautenticazione se richiesto
+    force_reauth = os.getenv('FORCE_REAUTH', 'false').lower() == 'true'
+    
+    if GOOGLE_TOKEN_JSON and not force_reauth:
         try:
             creds_data = json.loads(GOOGLE_TOKEN_JSON)
             creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
@@ -64,9 +71,15 @@ def get_drive_service():
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            logger.info("Credentials expired. Refreshing...")
-            creds.refresh(Request())
-        else:
+            try:
+                logger.info("Credentials expired. Refreshing...")
+                creds.refresh(Request())
+            except Exception as refresh_error:
+                logger.error(f"Failed to refresh token: {refresh_error}")
+                logger.info("Token refresh failed. Starting new OAuth flow...")
+                creds = None
+        
+        if not creds:
             logger.info("No valid credentials found. Starting OAuth flow.")
             if not GOOGLE_CREDENTIALS_JSON:
                 logger.error("GOOGLE_CREDENTIALS_JSON env var not set.")
