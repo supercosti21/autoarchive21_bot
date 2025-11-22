@@ -3,6 +3,7 @@ import os
 import mimetypes
 import json
 from pathlib import Path
+import magic
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -49,11 +50,8 @@ def get_drive_service():
 
     creds = None
     token_path = 'token.json'
-    
-    # Forza la riautenticazione se richiesto
-    force_reauth = os.getenv('FORCE_REAUTH', 'false').lower() == 'true'
-    
-    if GOOGLE_TOKEN_JSON and not force_reauth:
+
+    if GOOGLE_TOKEN_JSON:
         try:
             creds_data = json.loads(GOOGLE_TOKEN_JSON)
             creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
@@ -67,15 +65,9 @@ def get_drive_service():
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            try:
-                logger.info("Credentials expired. Refreshing...")
-                creds.refresh(Request())
-            except Exception as refresh_error:
-                logger.error(f"Failed to refresh token: {refresh_error}")
-                logger.info("Token refresh failed. Starting new OAuth flow...")
-                creds = None
-        
-        if not creds:
+            logger.info("Credentials expired. Refreshing...")
+            creds.refresh(Request())
+        else:
             logger.info("No valid credentials found. Starting OAuth flow.")
             if not GOOGLE_CREDENTIALS_JSON:
                 logger.error("GOOGLE_CREDENTIALS_JSON env var not set.")
@@ -126,8 +118,7 @@ def find_or_create_nested_folder(service, path_string: str, root_folder_id: str)
 def upload_file_to_drive(service, file_path, folder_id):
     try:
         file_name = os.path.basename(file_path)
-        # Usa solo mimetypes per rilevare il tipo di file
-        mime_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        mime_type = magic.from_file(file_path, mime=True) or mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
 
         file_metadata = {'name': file_name, 'parents': [folder_id]}
         media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
