@@ -3,7 +3,6 @@ import os
 import mimetypes
 import json
 from pathlib import Path
-import magic
 
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -118,7 +117,8 @@ def find_or_create_nested_folder(service, path_string: str, root_folder_id: str)
 def upload_file_to_drive(service, file_path, folder_id):
     try:
         file_name = os.path.basename(file_path)
-        mime_type = magic.from_file(file_path, mime=True) or mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        # Usa solo mimetypes per rilevare il tipo di file
+        mime_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
 
         file_metadata = {'name': file_name, 'parents': [folder_id]}
         media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
